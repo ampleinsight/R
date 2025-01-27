@@ -1,0 +1,131 @@
+---
+title: "Visualization of Public Health Metrics Around the World (2000-2017)"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: column #Page orientation. See note below on "height" vs "width" for row/column orientations
+    vertical_layout: fill #Use "scroll" to change page to scrolling. With fill, page fits everything as use changes page size. I like fill :)
+    
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(scales)
+
+setwd("/Users/ahmedkhan/Documents")
+
+#NILS = read_csv("WHO_NILS_ALL.csv")
+FAO = read_csv("UNFAO_by_Year.csv")
+#GFSI = read_csv("GlobalFoodSecurityIndex_2019.csv")
+#Imports as a Tibble
+
+#Long format the FAO data (prep for Tidyverse use)
+FAO = FAO %>% pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Value")
+
+ #Drop weird column "X23"
+  #FAO = select (FAO, -X23)
+
+  #Fix year format
+  #FAO$year = as.numeric(FAO$year)
+
+#head(FAO)
+#head(NILS)
+#head(GFSI)
+
+#unique(FAO$Indicator)
+
+#Filter to get countries
+FAO_Pop = filter(FAO, Indicator ==  "Total population"  & IsCountry == "Y")
+
+#Get latest value available for each country
+FAO_Pop_Max = FAO_Pop %>% group_by(Regions.Subregions.Countries) %>%
+  slice(which.max(Year)) %>%
+  select(Region, Regions.Subregions.Countries, Value)
+
+
+```
+
+This dashboards shows how meeting basic dietary needs of people is affected by economic activity (Chart A) and over time, both globally (Chart B) and by region (Chart C).
+
+As Chart A shows, economic activity sizably affects meeting basic dietary needs. Economies with larger activity tend to do much better in meeting dietary needs than those with smaller economic activity do. Since larger economies often exceed minimum requirements (in some cases exceeding by up to by 40%) whereas smaller ones do not meet minimal needs, an opportunity exists for food and economic aid/cooperation to flow from larger to smaller economies to meet dietary needs around the world.
+
+Chart B shows that between 2000 and 2017, the world overall has increasingly met basic dietary needs, even through the great recession of 2009. Chart C, however, highlights important variations in this trend by region. In particular, Africa continues to lag behind other regions, barely meeting minimum dietary needs as a whole. Of impressive note is Asia's growth in meeting dietary needs. Asia has seen highly robust and accelerated economic development over the last few decades, helping to lift people out of poverty and meet dietary needs. This observation is consistent with what Chart A shows -- that higher economic activity is associated with better meeting dietary needs. Note: This does not mean that all countries in a region uniformly meet dietary needs of citizens.
+
+Column {data-width=700}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+library(ggridges)
+FAO_Econ = FAO %>% 
+  filter(Indicator == "Average dietary energy supply adequacy") %>%
+  filter(Subregion == "Low-income economies" | Subregion == "Lower-middle-income economies" | Subregion =="Upper-middle-income economies" | Subregion == "High-income economies")%>%
+  select(Subregion, Year, Value)
+
+#Order factor levels manually from Low to High -- so they show that way on the plot
+FAO_Econ$factor =  factor(FAO_Econ$Subregion, levels = c("Low-income economies", "Lower-middle-income economies", "Upper-middle-income economies", "High-income economies"))
+
+
+ggplot(FAO_Econ, aes(x = Value, y = factor, color = factor, fill = factor)) +
+  geom_density_ridges ()+
+  #xlim(0, 300)+
+  theme_ridges()+
+  theme(plot.title = element_text(hjust=1, size = 11) ,plot.subtitle = element_text(hjust=1, size = 10), axis.title=element_text(size=10, face = "bold"), axis.text.x = element_text(face="bold"), legend.position = "none", axis.title.y = element_blank(), plot.caption = element_text(size = 10)) +
+  scale_fill_brewer(palette="RdYlGn")+
+  scale_color_brewer(palette="RdYlGn")+
+  labs(x= "% of Minimum Dietary Need Met",
+       title="Impact of Economic Activity on Meeting Dietary Need from 2001 to 2017", subtitle = "Distribution of country scores", caption="Source: UN Food and Agriculture Organization")
+```
+
+Column  {.tabset}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+#Global Level
+FAO_Avg_Diet_Adeq = filter(FAO, Indicator =="Average dietary energy supply adequacy" & Regions.Subregions.Countries == "WORLD")
+
+#names(FAO)
+fig_data_FAO_Diet_Adeq = tibble("Year"=as.numeric(FAO_Avg_Diet_Adeq$Year), "Diet_Adequacy" = FAO_Avg_Diet_Adeq$Value)
+
+#str(fig_data_FAO_Diet_Adeq)
+
+ggplot(fig_data_FAO_Diet_Adeq, aes(x=Year, y=Diet_Adequacy)) + 
+  geom_line(color = "orange", size = 0.5) +
+  theme_classic() +
+  theme(plot.title = element_text(face="bold"), axis.text.x = element_text(face="bold")) +
+  xlim(2000,2020) + #ylim(110,120) +
+  #scale_y_continuous(labels = percent_format(accuracy = 1))
+  labs(x="Year",y="% of Dietary Need Met",title="World Food Adeqancy Rate Trends (2000-2017)", subtitle = "Percent of Overall Dietary Need Met at the Global Level", caption = "Source: UN Food and Agriculture Organization")
+
+```
+
+
+### Chart C
+
+```{r}
+##Regional Level
+
+FAO_Avg_Diet_Adeq_Reg = 
+  filter(FAO, Indicator =="Average dietary energy supply adequacy" & 
+          (
+            Regions.Subregions.Countries == "NORTHERN AMERICA AND EUROPE"|
+            Regions.Subregions.Countries == "LATIN AMERICA AND THE CARIBBEAN"|
+            Regions.Subregions.Countries == "OCEANIA"|
+            Regions.Subregions.Countries == "ASIA"|
+            Regions.Subregions.Countries == "AFRICA"
+          )
+         )
+
+fig_data_FAO_Diet_Adeq_Reg = tibble("Year"=as.numeric(FAO_Avg_Diet_Adeq_Reg$Year), "Diet_Adequacy" = FAO_Avg_Diet_Adeq_Reg$Value, "Region" = FAO_Avg_Diet_Adeq_Reg$Regions.Subregions.Countries)
+
+ggplot(fig_data_FAO_Diet_Adeq_Reg, aes(x=Year, y=Diet_Adequacy, group = Region, color = Region)) + 
+  geom_line() + theme_classic() +
+  theme(plot.title = element_text(face="bold"), axis.text.x = element_text(face="bold"), legend.position="bottom")+
+  xlim(2000,2020) +
+  #scale_y_continuous(labels = percent_format(accuracy = 1)) Just divide Y aesthetic by 100 to use this line
+  labs(x="Year",y="% of Dietary Need Met",title="Food Adeqancy Rate Trends by Region (2000-2019)", subtitle = "Percent of Dietary Need Met by Regional Level", caption = "Source: UN Food and Agriculture Organization. Oceania includes small island states.") +
+  scale_color_discrete(labels = function(x) str_wrap(x, width = 8))
+```

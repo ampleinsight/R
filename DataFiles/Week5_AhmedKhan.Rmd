@@ -1,0 +1,43 @@
+---
+title: "First Visualization of Food Security in the U.S."
+author: "Ahmed Khan"
+date: "10/4/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(knitr)
+
+setwd("/Users/ahmedkhan/Downloads")
+
+dat<-read_csv("CPS_FS_Clean.csv")
+
+dat<-drop_na(dat)
+
+```
+
+## R Markdown Report
+This report shows some summaries of data from the Food Security Survey conducted in the United States in 2018 by the Department of Agriculture. Tabular and graphical visualizations are presented. Food *Security* is defined as having enough to eat at all points in the survey year. Food *Insecurity* means not having enough to eat at least once during the survey year (due to a lack of resources for food).
+
+The table below shows the overall rate of Food Insecurity (i.e. hunger) along with the average age of the survey respondents. Overall, 12% of Americans went hungry at least once in 2018. Also, on average, survey respondents were about 50 years old. This information establishes a baseline against which future visualizations can be compared.
+
+The first plot is a bar chart showing the number of survey respondents by gender. This visualization shows that the survey includes a roughly equal proportion of men and women,which means that the survey data is not significantly skewed by gender.
+
+The second plot is a box plot showing the mean age of individuals by food insecurity status. This visualization suggests that individuals who were food insecure in 2018 tended to be slightly younger in age than those who were not. Note: This does indicate statistical significance or include controls for other relevant factors yet.
+
+# Section A: Baseline Summary Table
+```{r table1,echo=FALSE}
+#?kable
+
+kable(summarise(dat,Percent_Insecure=mean(dat$insecure)*100,Average_Age=mean(dat$age), StDev_of_Age = sd(dat$age)),align="c",caption = "U.S. Food Security Survey 2018: Overall Food Insecurity and Respondent Age")
+```
+# Section B: QPlots for Food Insecurity
+```{r plot1,echo=FALSE}
+
+qplot(as.factor(dat$pesex), geom = "bar", main="Plot 1. Number of Survey Respondents by Gender - U.S. (2018)", xlab="Gender", ylab = "Count of Respondents", colour = I("blue"))
+
+qplot(x = factor(insecure), y = age, data = dat, geom = "boxplot", xlab="0 = Food Secure    1= Food Insecure (Hungry)", ylab = "Age of Respondent", main="Plot 2. Boxplot of Age by Food Security Status (2018)", colour = I("orange"))
+
+```
